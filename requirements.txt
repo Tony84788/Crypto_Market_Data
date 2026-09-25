@@ -1,0 +1,9 @@
+requests
+python-dotenv
+pydantic
+pydantic-settings
+pandas
+pyarrow
+pytest
+fastapi
+uvicorn
