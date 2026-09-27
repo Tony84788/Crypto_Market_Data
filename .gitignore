@@ -266,3 +266,18 @@ $RECYCLE.BIN/
 
 
 *.kilo
+
+IGNORE
+├── .env                         # secrets
+├── airflow/airflow.db           # Airflow runtime database
+├── airflow/airflow.db-shm       # SQLite runtime file
+├── airflow/airflow.db-wal       # SQLite runtime file
+├── airflow/logs/                # generated logs
+├── __pycache__/                 # Python generated files
+├── *.pyc
+├── data/raw/                    # downloaded raw data
+├── data/processed/              # generated Parquet
+├── data/lake/                   # generated data lake
+├── dbt target/                  # generated dbt artifacts
+├── dbt_packages/                # generated dependencies
+└── OS/editor temporary files
