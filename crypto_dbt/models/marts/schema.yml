@@ -1,0 +1,42 @@
+version: 2
+
+models:
+  - name: mart_crypto_latest
+    description: "Latest market snapshot for each cryptocurrency."
+
+    columns:
+      - name: crypto_id
+        description: "CoinGecko cryptocurrency ID."
+        data_tests:
+          - not_null
+          - unique
+
+      - name: symbol
+        description: "Cryptocurrency ticker symbol."
+        data_tests:
+          - not_null
+
+      - name: name
+        description: "Cryptocurrency name."
+        data_tests:
+          - not_null
+
+      - name: current_price
+        description: "Latest cryptocurrency price in USD."
+        data_tests:
+          - not_null
+
+      - name: market_cap
+        description: "Latest cryptocurrency market capitalization."
+        data_tests:
+          - not_null
+
+      - name: market_cap_rank
+        description: "Latest CoinGecko market-cap ranking."
+        data_tests:
+          - not_null
+
+      - name: last_updated
+        description: "Timestamp of the latest market update."
+        data_tests:
+          - not_null

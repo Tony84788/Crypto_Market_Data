@@ -1,0 +1,70 @@
+from datetime import datetime
+
+from airflow.sdk import DAG
+from airflow.providers.standard.operators.python import PythonOperator
+
+
+def extract_from_coingecko():
+    print("TODO: CoinGecko extraction")
+
+
+def produce_to_kafka():
+    print("TODO: Kafka producer")
+
+
+def consume_from_kafka():
+    print("TODO: Kafka bounded consumer")
+
+
+def transform_to_parquet():
+    print("TODO: Lake transformation")
+
+
+def load_to_bigquery():
+    print("TODO: BigQuery load")
+
+
+def run_dbt():
+    print("TODO: dbt build and test")
+
+
+with DAG(
+    dag_id="crypto_market_pipeline",
+    description="Cryptocurrency market data pipeline",
+    start_date=datetime(2026, 1, 1),
+    schedule=None,
+    catchup=False,
+    tags=["crypto", "kafka", "bigquery", "dbt"],
+) as dag:
+
+    extract = PythonOperator(
+        task_id="extract_from_coingecko",
+        python_callable=extract_from_coingecko,
+    )
+
+    produce = PythonOperator(
+        task_id="produce_to_kafka",
+        python_callable=produce_to_kafka,
+    )
+
+    consume = PythonOperator(
+        task_id="consume_from_kafka",
+        python_callable=consume_from_kafka,
+    )
+
+    transform = PythonOperator(
+        task_id="transform_to_parquet",
+        python_callable=transform_to_parquet,
+    )
+
+    load = PythonOperator(
+        task_id="load_to_bigquery",
+        python_callable=load_to_bigquery,
+    )
+
+    dbt = PythonOperator(
+        task_id="run_dbt",
+        python_callable=run_dbt,
+    )
+
+    extract >> produce >> consume >> transform >> load >> dbt

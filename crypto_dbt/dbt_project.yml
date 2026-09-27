@@ -1,0 +1,16 @@
+name: crypto_dbt
+
+profile: crypto_dbt
+
+model-paths: ["models"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  crypto_dbt:
+    +static_analysis: strict
+
+    staging:
+      +materialized: view

@@ -1,0 +1,20 @@
+version: 2
+
+sources:
+  - name: crypto_market
+    database: crypto-market-data-platform
+    schema: crypto_market
+
+    config:
+      freshness:
+        warn_after:
+          count: 30
+          period: minute
+        error_after:
+          count: 60
+          period: minute
+
+    tables:
+      - name: crypto_prices
+        config:
+          loaded_at_field: last_updated

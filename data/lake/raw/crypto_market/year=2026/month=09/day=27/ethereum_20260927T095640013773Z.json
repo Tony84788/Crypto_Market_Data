@@ -1,0 +1,38 @@
+{
+  "event_id": "ethereum",
+  "event_type": "crypto_market_update",
+  "source": "coingecko",
+  "received_at": "2026-09-27T09:56:35.756472+00:00",
+  "data": {
+    "id": "ethereum",
+    "symbol": "eth",
+    "name": "Ethereum",
+    "image": "https://coin-images.coingecko.com/coins/images/279/large/ethereum.png?1696501628",
+    "current_price": 2713.89,
+    "market_cap": 331324144562,
+    "market_cap_rank": 2,
+    "fully_diluted_valuation": 331324144562,
+    "total_volume": 7057158399,
+    "high_24h": 2720.75,
+    "low_24h": 2666.72,
+    "price_change_24h": 32.73,
+    "price_change_percentage_24h": 1.20577,
+    "market_cap_change_24h": 4003767325,
+    "market_cap_change_percentage_24h": 1.2232,
+    "circulating_supply": 122084677.73131435,
+    "total_supply": 122084677.7313143,
+    "max_supply": null,
+    "ath": 4946.05,
+    "ath_change_percentage": -45.13014,
+    "ath_date": "2025-08-24T11:21:03.000Z",
+    "atl": 0.432979,
+    "atl_change_percentage": 626694.95169,
+    "atl_date": "2015-10-19T16:00:00.000Z",
+    "roi": {
+      "times": 41.74602113882561,
+      "currency": "btc",
+      "percentage": 4174.602113882562
+    },
+    "last_updated": "2026-09-27T09:53:30.000Z"
+  }
+}

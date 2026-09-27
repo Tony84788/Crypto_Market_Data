@@ -1,0 +1,42 @@
+version: 2
+
+models:
+  - name: stg_crypto_prices
+    description: "Cleaned and deduplicated cryptocurrency market data."
+
+    columns:
+      - name: event_id
+        description: "Unique identifier of the cryptocurrency event."
+        data_tests:
+          - not_null
+
+      - name: crypto_id
+        description: "CoinGecko cryptocurrency ID."
+        data_tests:
+          - not_null
+
+      - name: symbol
+        description: "Cryptocurrency ticker symbol."
+        data_tests:
+          - not_null
+
+      - name: name
+        description: "Cryptocurrency name."
+        data_tests:
+          - not_null
+
+      - name: current_price
+        description: "Current cryptocurrency price in USD."
+        data_tests:
+          - not_null
+
+      - name: market_cap
+        description: "Cryptocurrency market capitalization."
+        data_tests:
+          - not_null
+
+      - name: last_updated
+        description: "Timestamp when CoinGecko last updated the market data."
+        data_tests:
+          - not_null
+

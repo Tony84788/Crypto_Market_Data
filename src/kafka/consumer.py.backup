@@ -1,0 +1,180 @@
+import json
+import logging
+
+from kafka import KafkaConsumer
+from kafka.serializer import Deserializer
+
+from src.kafka.processor import (
+    process_crypto_event,
+    validate_crypto_event,
+)
+from src.kafka.dlq import create_dlq_producer, send_to_dlq
+from src.lake.storage import save_raw_event
+
+
+KAFKA_BOOTSTRAP_SERVERS = "localhost:9092"
+KAFKA_TOPIC = "crypto-market-data"
+
+
+class StringDeserializer(Deserializer):
+    """Deserialize UTF-8 bytes into Python strings."""
+
+    def deserialize(self, topic, data):
+        if data is None:
+            return None
+
+        return data.decode("utf-8")
+
+
+class JSONDeserializer(Deserializer):
+    """Deserialize JSON bytes into Python objects."""
+
+    def deserialize(self, topic, data):
+        if data is None:
+            return None
+
+        return json.loads(data.decode("utf-8"))
+
+
+def create_consumer() -> KafkaConsumer:
+    """Create and return a Kafka consumer."""
+
+    consumer = KafkaConsumer(
+        KAFKA_TOPIC,
+        bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+        auto_offset_reset="earliest",
+        enable_auto_commit=True,
+        group_id="crypto-market-dlq-test",
+        key_deserializer=StringDeserializer(),
+        value_deserializer=JSONDeserializer(),
+    )
+
+    return consumer
+
+
+def main():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(levelname)s | %(message)s",
+    )
+
+    logging.getLogger("kafka").setLevel(logging.WARNING)
+
+    print("Kafka consumer starting...")
+    print(f"Listening to topic: {KAFKA_TOPIC}")
+
+    consumer = create_consumer()
+    dlq_producer = create_dlq_producer()
+
+    try:
+        for message in consumer:
+
+            print("\n" + "=" * 60)
+            print("KAFKA MESSAGE")
+            print("=" * 60)
+
+            print(f"Partition: {message.partition}")
+            print(f"Offset: {message.offset}")
+            print(f"Key: {message.key}")
+
+            event = message.value
+
+            envelope_errors = []
+
+            required_envelope_fields = [
+                "event_id",
+                "event_type",
+                "source",
+                "received_at",
+                "data",
+            ]
+
+            # Validate the envelope.
+            for field in required_envelope_fields:
+                if field not in event:
+                    envelope_errors.append(
+                        f"Missing envelope field: {field}"
+                    )
+
+            # Handle envelope validation AFTER checking all fields.
+            if envelope_errors:
+                print("Event rejected.")
+
+                send_to_dlq(
+                    dlq_producer,
+                    event,
+                    envelope_errors,
+                )
+
+                continue
+
+            crypto_data = event["data"]
+
+            # Validate the cryptocurrency data.
+            errors = validate_crypto_event(
+                crypto_data
+            )
+
+            if errors:
+                print("Event rejected.")
+
+                send_to_dlq(
+                    dlq_producer,
+                    event,
+                    errors,
+                )
+
+                continue
+
+            # Process the valid cryptocurrency event.
+            processed_event = process_crypto_event(
+                crypto_data
+            )
+
+            lake_path = save_raw_event(event)
+
+            print(
+                f"Saved raw event to data lake: {lake_path}"
+            )
+
+            print("\nEVENT METADATA")
+
+            print(
+                json.dumps(
+                    {
+                        "event_id": event["event_id"],
+                        "event_type": event["event_type"],
+                        "source": event["source"],
+                        "received_at": event["received_at"],
+                        "kafka": {
+                            "topic": message.topic,
+                            "partition": message.partition,
+                            "offset": message.offset,
+                        },
+                    },
+                    indent=2,
+                )
+            )
+
+            print("\nPROCESSED EVENT")
+
+            print(
+                json.dumps(
+                    processed_event,
+                    indent=2,
+                )
+            )
+
+    except KeyboardInterrupt:
+        print("\nConsumer stopped by user.")
+
+    finally:
+        consumer.close()
+        dlq_producer.close()
+
+        print("\nKafka consumer closed.")
+        print("DLQ producer closed.")
+
+
+if __name__ == "__main__":
+    main()
