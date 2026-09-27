@@ -18,8 +18,8 @@
 
 # Google Cloud credentials
 
-*.json
-!docker-compose.json
+# Do not globally ignore JSON files.
+# Raw/generated JSON is ignored through the data/ rules above.
 
 # Never commit service account credentials
 
