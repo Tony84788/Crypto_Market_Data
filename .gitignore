@@ -1,37 +1,268 @@
-# Environment variables
+# ============================================================
+
+# Cryptocurrency Market Data Platform
+
+# Git Ignore Rules
+
+# ============================================================
+
+# ------------------------------------------------------------
+
+# Environment variables and secrets
+
+# ------------------------------------------------------------
+
 .env
+.env.*
+!.env.example
+
+# Google Cloud credentials
+
+*.json
+!docker-compose.json
+
+# Never commit service account credentials
+
+*service-account*.json
+*gcp-credentials*.json
+
+# ------------------------------------------------------------
 
 # Python
-__pycache__/
+
+# ------------------------------------------------------------
+
+**pycache**/
 *.py[cod]
-*.pyo
+*$py.class
+*.so
+
+# Python build/package artifacts
+
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Coverage
+
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.tox/
+.nox/
+
+# ------------------------------------------------------------
 
 # Virtual environments
+
+# ------------------------------------------------------------
+
 .venv/
 venv/
 env/
+ENV/
 
-# Test/cache
-.pytest_cache/
-.mypy_cache/
+# Conda
 
-# Data
+.conda/
+
+# ------------------------------------------------------------
+
+# Jupyter
+
+# ------------------------------------------------------------
+
+.ipynb_checkpoints/
+
+# ------------------------------------------------------------
+
+# Project-generated data
+
+# ------------------------------------------------------------
+
 data/raw/*
 data/processed/*
+data/lake/raw/*
+data/lake/processed/*
+
+# Keep directory structure
+
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/lake/raw/.gitkeep
+!data/lake/processed/.gitkeep
+
+# ------------------------------------------------------------
 
 # Logs
-logs/*.log
 
-# IDE
-.vscode/
+# ------------------------------------------------------------
+
+logs/
+*.log
+
+# Airflow logs
+
+airflow/logs/
+
+# ------------------------------------------------------------
+
+# Airflow runtime/database files
+
+# ------------------------------------------------------------
+
+airflow/airflow.db
+airflow/airflow.db-shm
+airflow/airflow.db-wal
+
+airflow/unittests.cfg
+airflow/webserver_config.py
+
+# Airflow generated files
+
+airflow/**pycache**/
+airflow/dags/**pycache**/
+airflow/plugins/**pycache**/
+
+# ------------------------------------------------------------
+
+# dbt
+
+# ------------------------------------------------------------
+
+crypto_dbt/target/
+crypto_dbt/dbt_packages/
+crypto_dbt/logs/
+crypto_dbt/.user.yml
+
+# dbt partial parsing artifacts
+
+crypto_dbt/target/partial_parse.msgpack
+
+# ------------------------------------------------------------
+
+# Kafka
+
+# ------------------------------------------------------------
+
+# Local Kafka data if mounted
+
+kafka-data/
+kafka-logs/
+
+# ------------------------------------------------------------
+
+# Docker
+
+# ------------------------------------------------------------
+
+.docker/
+
+# ------------------------------------------------------------
+
+# IDEs and editors
+
+# ------------------------------------------------------------
+
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
 .idea/
+*.iml
 
-# OS
+# Vim
+
+*.swp
+*.swo
+*~
+
+# ------------------------------------------------------------
+
+# OS generated files
+
+# ------------------------------------------------------------
+
 .DS_Store
 Thumbs.db
 
-# Secrets
+# ------------------------------------------------------------
+
+# Temporary files
+
+# ------------------------------------------------------------
+
+*.tmp
+*.temp
+*.bak
+*.backup
+*.cache
+
+# ------------------------------------------------------------
+
+# Terraform
+
+# ------------------------------------------------------------
+
+.terraform/
+.terraform.lock.hcl
+
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+*.tfvars
+*.tfvars.json
+
+# Keep example Terraform variables
+
+!*.tfvars.example
+
+# ------------------------------------------------------------
+
+# Secrets / credentials
+
+# ------------------------------------------------------------
+
 *.pem
 *.key
+*.crt
+credentials/
+secrets/
+
+# ------------------------------------------------------------
+
+# Local development files
+
+# ------------------------------------------------------------
+
+*.local
+.local/
+
+# ------------------------------------------------------------
+
+# macOS / Windows
+
+# ------------------------------------------------------------
+
+.AppleDouble
+.LSOverride
+ehthumbs.db
+Icon?
+$RECYCLE.BIN/
+
+# ------------------------------------------------------------
+
+# Project-specific runtime files
+
+# ------------------------------------------------------------
+
+*.pid
+*.pid.lock
+.DS_Store
+
 
 *.kilo
