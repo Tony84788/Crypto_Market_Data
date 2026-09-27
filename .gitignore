@@ -207,8 +207,6 @@ Thumbs.db
 # ------------------------------------------------------------
 
 .terraform/
-.terraform.lock.hcl
-
 *.tfstate
 *.tfstate.*
 crash.log
