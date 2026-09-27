@@ -141,9 +141,7 @@ def validate_timestamp_freshness(
 
     data_age = df["ingested_at"] - df["last_updated"]
 
-    stale_records = data_age > pd.Timedelta(
-        minutes=max_age_minutes
-    )
+    stale_records = data_age > pd.Timedelta(max_age_minutes, unit="m")
 
     stale_count = stale_records.sum()
 

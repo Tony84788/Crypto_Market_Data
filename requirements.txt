@@ -1,15 +1,6 @@
 requests
-python-dotenv
-pydantic
 pydantic-settings
 pandas
 pyarrow
-pytest
-fastapi
-uvicorn
 kafka-python
-google-cloud-cli
-dbt
-apache-airflow
 google-cloud-bigquery
-python-graphviz
