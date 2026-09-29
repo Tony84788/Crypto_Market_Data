@@ -1,80 +1,106 @@
 # Cryptocurrency Market Data Platform
 
-An end-to-end cryptocurrency market data engineering platform that extracts cryptocurrency market data from the CoinGecko API, streams events through Apache Kafka, stores raw and processed data in a local data lake, loads analytical data into Google BigQuery, transforms and tests warehouse data with dbt, and orchestrates the complete workflow with Apache Airflow.
+An end-to-end cryptocurrency market data engineering platform that extracts market data from the CoinGecko API, streams events through Apache Kafka, stores raw and processed data in a local data lake, loads analytical data into Google BigQuery, transforms and tests warehouse data with dbt, orchestrates the complete workflow with Apache Airflow, manages cloud infrastructure with Terraform, validates changes through GitHub Actions CI, and exposes analytical data through a Streamlit dashboard.
 
-The project is designed as a zero-cost learning and portfolio project using local infrastructure, Docker, Kafka, and the BigQuery Sandbox.
+The project is designed as a **zero-cost learning and portfolio platform**, combining local infrastructure, Docker, Kafka, a local data lake, and the Google BigQuery Sandbox.
 
-The current implementation provides a streaming-oriented architecture, while the complete Airflow pipeline is manually triggered during development.
+The pipeline is configured for **hourly execution through Airflow** and has been successfully validated end-to-end.
 
 ---
 
 ## Architecture
 
 ```text
-                         ┌─────────────────────┐
-                         │    CoinGecko API    │
-                         │                     │
-                         │ Cryptocurrency      │
-                         │ Market Data         │
-                         └──────────┬──────────┘
-                                    │
-                                    ▼
-                         ┌─────────────────────┐
-                         │   Python Extractor  │
-                         │                     │
-                         │ requests            │
-                         │ validation          │
-                         └──────────┬──────────┘
-                                    │
-                                    ▼
-                         ┌─────────────────────┐
-                         │   Apache Kafka      │
-                         │                     │
-                         │ crypto-market-data  │
-                         └──────────┬──────────┘
-                                    │
-                                    ▼
-                         ┌─────────────────────┐
-                         │   Kafka Consumer    │
-                         │                     │
-                         │ validation          │
-                         │ processing          │
-                         │ DLQ handling        │
-                         └──────────┬──────────┘
-                                    │
-                                    ▼
-                    ┌──────────────────────────────┐
-                    │       Local Data Lake        │
-                    │                              │
-                    │ RAW JSON                     │
-                    │        ↓                     │
-                    │ Processed Parquet            │
-                    └──────────────┬───────────────┘
-                                   │
-                                   ▼
-                    ┌──────────────────────────────┐
-                    │        Google BigQuery       │
-                    │                              │
-                    │ crypto_prices                │
-                    └──────────────┬───────────────┘
-                                   │
-                                   ▼
-                    ┌──────────────────────────────┐
-                    │             dbt              │
-                    │                              │
-                    │ staging                      │
-                    │ deduplication                │
-                    │ freshness                    │
-                    │ tests                        │
-                    │ marts                        │
-                    └──────────────┬───────────────┘
-                                   │
-                                   ▼
-                    ┌──────────────────────────────┐
-                    │        Apache Airflow        │
-                    │                              │
-                    │ End-to-end orchestration     │
-                    └──────────────────────────────┘
+                              ┌──────────────────────┐
+                              │     CoinGecko API    │
+                              │                      │
+                              │ Cryptocurrency       │
+                              │ Market Data          │
+                              └──────────┬───────────┘
+                                         │
+                                         │ REST API
+                                         ▼
+                              ┌──────────────────────┐
+                              │   Python Extractor   │
+                              │                      │
+                              │ requests             │
+                              │ configuration        │
+                              │ validation           │
+                              └──────────┬───────────┘
+                                         │
+                                         │ JSON events
+                                         ▼
+                              ┌──────────────────────┐
+                              │    Apache Kafka      │
+                              │                      │
+                              │ crypto-market-data   │
+                              └──────────┬───────────┘
+                                         │
+                                         ▼
+                              ┌──────────────────────┐
+                              │   Kafka Consumer     │
+                              │                      │
+                              │ validation           │
+                              │ processing            │
+                              │ DLQ handling          │
+                              └──────────┬───────────┘
+                                         │
+                         ┌───────────────┴───────────────┐
+                         │                               │
+                       Valid                         Invalid
+                         │                               │
+                         ▼                               ▼
+              ┌──────────────────────┐       ┌──────────────────────┐
+              │    Local Data Lake   │       │ Dead Letter Queue    │
+              │                      │       │                      │
+              │ Raw JSON             │       │ crypto-market-data-  │
+              │        ↓             │       │ dlq                  │
+              │ Processed Parquet    │       └──────────────────────┘
+              └──────────┬───────────┘
+                         │
+                         ▼
+              ┌──────────────────────┐
+              │     Google BigQuery  │
+              │                      │
+              │ crypto_market        │
+              │        │             │
+              │ crypto_prices        │
+              └──────────┬───────────┘
+                         │
+                         ▼
+              ┌──────────────────────┐
+              │         dbt          │
+              │                      │
+              │ staging              │
+              │ deduplication        │
+              │ freshness            │
+              │ tests                │
+              │ analytical marts     │
+              └──────────┬───────────┘
+                         │
+                         ▼
+              ┌──────────────────────┐
+              │ Streamlit Dashboard  │
+              │                      │
+              │ Market overview      │
+              │ Price performance    │
+              │ Historical prices    │
+              │ Data freshness       │
+              └──────────────────────┘
+
+
+              ┌─────────────────────────────────────────┐
+              │              Apache Airflow              │
+              │                                         │
+              │     Orchestrates the complete pipeline  │
+              │     on an hourly schedule               │
+              └─────────────────────────────────────────┘
+
+              ┌─────────────────────────────────────────┐
+              │ Terraform + GitHub Actions              │
+              │                                         │
+              │ Infrastructure as Code + CI/CD          │
+              └─────────────────────────────────────────┘
 ```
 
 ---
@@ -93,16 +119,21 @@ The platform performs the following operations:
 6. Transform raw events using Pandas.
 7. Store processed data as Parquet.
 8. Load processed Parquet data into Google BigQuery.
-9. Transform and test warehouse data using dbt.
-10. Create analytical marts.
-11. Orchestrate the complete workflow using Apache Airflow.
-12. Validate Python code, Terraform configuration, and dbt project structure through GitHub Actions CI.
+9. Transform warehouse data using dbt.
+10. Apply data-quality tests, freshness checks, and deduplication.
+11. Create analytical marts.
+12. Orchestrate the complete workflow using Apache Airflow.
+13. Manage BigQuery infrastructure using Terraform.
+14. Validate Python, Terraform, and dbt components through GitHub Actions.
+15. Present analytical results through a Streamlit dashboard.
 
-The pipeline currently processes:
+The current pipeline processes:
 
-* Bitcoin
-* Ethereum
-* Solana
+```text
+Bitcoin
+Ethereum
+Solana
+```
 
 ---
 
@@ -110,19 +141,19 @@ The pipeline currently processes:
 
 ## CoinGecko
 
-The project uses CoinGecko as its external cryptocurrency market data provider.
+CoinGecko is the external cryptocurrency market data provider used by the platform.
 
 API documentation:
 
 https://docs.coingecko.com/
 
-Primary API endpoint:
+Primary endpoint:
 
 ```text
 https://api.coingecko.com/api/v3/coins/markets
 ```
 
-The API provides market information such as:
+The API provides market information including:
 
 * Cryptocurrency ID
 * Symbol
@@ -152,112 +183,125 @@ solana
 
 The Python client supports an optional CoinGecko API key through environment configuration.
 
+Secrets are stored locally in `.env` and are excluded from version control.
+
 ---
 
 # 3. Technology Stack
 
-| Technology       | Purpose                                    |
-| ---------------- | ------------------------------------------ |
-| Python           | Data ingestion, validation, and processing |
-| Requests         | CoinGecko API communication                |
-| Pandas           | Data transformation                        |
-| PyArrow          | Parquet processing                         |
-| Apache Kafka     | Event streaming                            |
-| Docker           | Kafka container infrastructure             |
-| Local Data Lake  | Raw and processed storage                  |
-| Parquet          | Columnar data storage                      |
-| Google BigQuery  | Cloud analytical warehouse                 |
-| dbt              | SQL transformation and data quality        |
-| Apache Airflow   | Workflow orchestration                     |
-| Conda            | Python environment management              |
-| Google Cloud SDK | GCP interaction                            |
-| Terraform        | Infrastructure as Code                     |
-| Git/GitHub       | Version control                            |
-| GitHub Actions   | Continuous integration                     |
+| Technology       | Purpose                                                    |
+| ---------------- | ---------------------------------------------------------- |
+| Python           | Data ingestion, validation, transformation, and processing |
+| Requests         | CoinGecko API communication                                |
+| Pandas           | Data transformation                                        |
+| PyArrow          | Parquet processing                                         |
+| Apache Kafka     | Event streaming                                            |
+| Docker           | Local Kafka infrastructure                                 |
+| Local Data Lake  | Raw and processed data storage                             |
+| JSON             | Raw event storage                                          |
+| Parquet          | Processed columnar storage                                 |
+| Google BigQuery  | Analytical data warehouse                                  |
+| dbt              | SQL transformation and data quality                        |
+| Apache Airflow   | Workflow orchestration and scheduling                      |
+| Streamlit        | Analytical dashboard                                       |
+| Plotly           | Dashboard visualizations                                   |
+| Conda            | Python environment management                              |
+| Google Cloud SDK | GCP interaction                                            |
+| Terraform        | Infrastructure as Code                                     |
+| Git/GitHub       | Version control                                            |
+| GitHub Actions   | Continuous integration                                     |
 
 ---
 
-# 4. Data Flow
-
-The complete data flow is:
+# 4. Complete Data Flow
 
 ```text
-CoinGecko
-    │
-    │ REST API
-    ▼
+CoinGecko API
+      │
+      │ REST API
+      ▼
 Python Extractor
-    │
-    │ JSON events
-    ▼
+      │
+      │ JSON
+      ▼
 Kafka Producer
-    │
-    ▼
+      │
+      ▼
 Kafka Topic
 crypto-market-data
-    │
-    ▼
+      │
+      ▼
 Kafka Consumer
-    │
-    ├──────────────► Dead Letter Queue
-    │
-    ▼
+      │
+      ├──────────────► Invalid Events
+      │                       │
+      │                       ▼
+      │                  Dead Letter Queue
+      │
+      ▼
 Raw Data Lake
 JSON
-    │
-    ▼
+      │
+      ▼
 Pandas Transformation
-    │
-    ▼
+      │
+      ▼
 Processed Data Lake
 Parquet
-    │
-    ▼
+      │
+      ▼
 BigQuery
 crypto_prices
-    │
-    ▼
+      │
+      ▼
 dbt
-    │
-    ├── staging
-    ├── deduplication
-    ├── freshness
-    ├── tests
-    └── marts
+      │
+      ├── staging
+      ├── deduplication
+      ├── freshness
+      ├── tests
+      └── marts
+      │
+      ▼
+Streamlit Dashboard
 ```
+
+Airflow orchestrates the complete sequence.
 
 ---
 
 # 5. Kafka Architecture
 
-Kafka introduces an event-streaming layer between data extraction and downstream processing.
+Kafka provides the event-streaming layer between data extraction and downstream processing.
 
-## Kafka Topic
+## Main Topic
 
 ```text
 crypto-market-data
 ```
 
-The topic currently uses:
+Configuration:
 
 ```text
 Partitions: 3
 Replication factor: 1
 ```
 
-A separate topic is used for rejected events:
+## Dead Letter Queue
+
+Invalid or rejected events are routed to:
 
 ```text
 crypto-market-data-dlq
 ```
 
-The Dead Letter Queue allows invalid events to be isolated instead of stopping the entire processing flow.
+The DLQ prevents invalid events from unnecessarily stopping the processing pipeline and provides a location for later inspection or reprocessing.
 
-The Kafka broker runs locally in Docker.
+Kafka runs locally inside Docker.
 
 ---
 
-# 6. Event Envelope
+# 6. Kafka Event Envelope
 
 Cryptocurrency records are wrapped in a standard event envelope before being published to Kafka.
 
@@ -280,7 +324,7 @@ Example:
 
 The envelope separates event metadata from the cryptocurrency payload.
 
-It provides fields such as:
+It contains information such as:
 
 * Event ID
 * Event type
@@ -288,19 +332,20 @@ It provides fields such as:
 * Event reception timestamp
 * Cryptocurrency payload
 
+This creates a consistent structure for downstream Kafka consumers.
+
 ---
 
-# 7. Data Lake
+# 7. Local Data Lake
 
-The project uses a local data lake to maintain a zero-cost development environment.
+The project uses a local data lake to maintain a zero-cost development environment while demonstrating data-lake architecture.
 
 ```text
 data/
-├── raw/
-├── processed/
 └── lake/
     ├── raw/
     │   └── crypto_market/
+    │
     └── processed/
         └── crypto_market/
             └── year=YYYY/
@@ -311,7 +356,7 @@ data/
 
 ## Raw Layer
 
-Raw Kafka events are stored as JSON:
+Raw Kafka events are stored under:
 
 ```text
 data/lake/raw/crypto_market/
@@ -321,13 +366,13 @@ The raw layer preserves the original event information received from Kafka.
 
 ## Processed Layer
 
-Processed records are stored as Parquet:
+Processed records are stored under:
 
 ```text
 data/lake/processed/crypto_market/
 ```
 
-The processed data uses date-based partitioning:
+Processed data is stored in Parquet format and partitioned by date:
 
 ```text
 year=2026/
@@ -335,13 +380,13 @@ month=09/
 day=27/
 ```
 
-This structure makes the local data lake suitable for later migration to cloud object storage such as Google Cloud Storage.
+The architecture can later be migrated from local storage to cloud object storage such as Google Cloud Storage without changing the conceptual raw/processed data-layer design.
 
 ---
 
 # 8. Parquet Timestamp Handling
 
-The pipeline initially encountered a BigQuery compatibility problem because Pandas/PyArrow generated Parquet timestamps using nanosecond precision.
+During development, the pipeline encountered a BigQuery compatibility issue caused by Parquet timestamps using nanosecond precision.
 
 BigQuery reported:
 
@@ -350,7 +395,7 @@ Invalid timestamp nanoseconds value
 of logical type TIMESTAMP_NANOS
 ```
 
-The transformation layer was updated to store the relevant timestamps using microsecond precision:
+The transformation layer was updated to use microsecond timestamp precision:
 
 ```python
 df["received_at"] = (
@@ -370,17 +415,21 @@ This converts the timestamps to UTC, removes timezone metadata from the Parquet 
 
 The resulting Parquet files load successfully into BigQuery.
 
+This demonstrates practical handling of **cross-system data-type compatibility** between Pandas, PyArrow, Parquet, and BigQuery.
+
 ---
 
 # 9. BigQuery
 
 Google BigQuery is used as the cloud analytical warehouse.
 
-## GCP Project
+## Existing GCP Project
 
 ```text
 crypto-market-data-platform
 ```
+
+Terraform manages BigQuery resources **inside this existing GCP project**.
 
 ## Dataset
 
@@ -394,7 +443,7 @@ crypto_market
 crypto_prices
 ```
 
-The raw BigQuery table contains fields including:
+The raw table contains fields including:
 
 ```text
 event_id
@@ -420,9 +469,7 @@ atl
 last_updated
 ```
 
-The BigQuery dataset and raw table are managed using Terraform.
-
-The dataset uses a configured 60-day default expiration policy for tables and partitions where applicable, supporting the zero-cost development approach.
+The BigQuery dataset uses a configured 60-day expiration policy for the zero-cost development environment.
 
 ---
 
@@ -436,20 +483,24 @@ Project:
 crypto_dbt/
 ```
 
-The dbt transformation flow is:
+The transformation flow is:
 
 ```text
-BigQuery raw table
-        │
-        ▼
+BigQuery
+crypto_prices
+      │
+      ▼
 stg_crypto_prices
-        │
-        ├── validation
-        ├── deduplication
-        └── freshness
-        │
-        ▼
-mart_crypto_latest
+      │
+      ├── normalization
+      ├── deduplication
+      └── freshness validation
+      │
+      ▼
+Analytical Models
+      │
+      ├── mart_crypto_latest
+      └── fct_crypto_price_history
 ```
 
 ## Staging Model
@@ -462,41 +513,65 @@ The staging model:
 
 * Normalizes cryptocurrency fields.
 * Renames `id` to `crypto_id`.
-* Lowercases cryptocurrency symbols.
+* Normalizes cryptocurrency symbols.
 * Removes duplicate records.
-* Keeps the latest received record for a cryptocurrency/timestamp combination.
+* Retains the appropriate latest records.
 
-## Mart Model
+## Latest Mart
 
 ```text
 mart_crypto_latest
 ```
 
-The mart contains the latest analytical record for the cryptocurrencies being processed.
+This model provides the latest analytical record for the cryptocurrencies being processed.
+
+## Historical Mart
+
+```text
+fct_crypto_price_history
+```
+
+This model provides historical cryptocurrency price records for analytical workloads.
 
 ## dbt Tests
 
-The project contains automated dbt data-quality checks covering:
+The project contains automated data-quality checks covering:
 
 * Uniqueness
 * Valid values
 * Staging data
 * Mart data
 * Freshness
+* Data integrity
 
-The completed dbt test suite achieved:
+Validation result:
 
 ```text
-17/17 tests passing
+17/17 dbt tests passing
 ```
 
-dbt manages the staging and mart models, while Terraform manages the underlying BigQuery dataset and raw table. This avoids infrastructure ownership conflicts between Terraform and dbt.
+Terraform and dbt deliberately have separate responsibilities:
+
+```text
+Terraform
+    │
+    ├── BigQuery dataset
+    └── Raw BigQuery table
+             │
+             ▼
+            dbt
+             │
+             ├── staging
+             └── analytical marts
+```
+
+This prevents infrastructure ownership conflicts.
 
 ---
 
-# 11. Airflow
+# 11. Apache Airflow
 
-Apache Airflow orchestrates the complete pipeline.
+Apache Airflow orchestrates the complete data pipeline.
 
 DAG:
 
@@ -525,15 +600,21 @@ load_to_bigquery
 run_dbt
 ```
 
-The DAG is currently configured for manual execution:
+## Airflow Schedule
 
-```python
-schedule=None
+The pipeline is configured to run hourly:
+
+```text
+0 * * * *
 ```
 
-This allows the complete pipeline to be triggered manually during development.
+Meaning:
 
-The project uses:
+```text
+Run at minute 0 of every hour.
+```
+
+Airflow version used during development:
 
 ```text
 Apache Airflow 3.3.2
@@ -545,7 +626,7 @@ The CryptoData project uses its own Airflow home:
 export AIRFLOW_HOME="$HOME/Desktop/CryptoData/airflow"
 ```
 
-This keeps the project's Airflow metadata separate from other Airflow projects on the machine.
+This keeps the project's Airflow metadata and logs separate from other Airflow projects on the machine.
 
 ---
 
@@ -553,13 +634,13 @@ This keeps the project's Airflow metadata separate from other Airflow projects o
 
 The pipeline has been successfully executed end-to-end.
 
-Successful run:
+A successful manual run:
 
 ```text
 manual__2026-09-27T11:15:28.629946+00:00
 ```
 
-Execution result:
+All six tasks succeeded:
 
 ```text
 extract_from_coingecko    SUCCESS
@@ -570,71 +651,121 @@ load_to_bigquery          SUCCESS
 run_dbt                   SUCCESS
 ```
 
-The complete workflow was:
-
-```text
-CoinGecko API
-     │
-     ▼
-extract_from_coingecko       ✅
-     │
-     ▼
-produce_to_kafka              ✅
-     │
-     ▼
-consume_from_kafka            ✅
-     │
-     ▼
-transform_to_parquet          ✅
-     │
-     ▼
-load_to_bigquery              ✅
-     │
-     ▼
-run_dbt                       ✅
-```
-
 Result:
 
 ```text
 6/6 Airflow tasks successful
 ```
 
-This confirms that the complete pipeline works from external API ingestion through Kafka, local storage, BigQuery, and dbt transformation.
+The project subsequently verified the scheduled workflow with a successful scheduled run:
+
+```text
+scheduled__2026-09-29T09:00:00+00:00
+```
+
+Scheduled task results:
+
+```text
+extract_from_coingecko    SUCCESS
+produce_to_kafka          SUCCESS
+consume_from_kafka        SUCCESS
+transform_to_parquet      SUCCESS
+load_to_bigquery          SUCCESS
+run_dbt                   SUCCESS
+```
+
+This confirms that the Airflow schedule successfully executes the complete pipeline.
 
 ---
 
-# 13. Infrastructure as Code
+# 13. Pipeline Monitoring and Data Quality
 
-Terraform is used to manage the BigQuery infrastructure.
+The pipeline contains multiple validation layers.
 
-Terraform version used during development:
+## Extraction Monitoring
+
+The Airflow extraction task checks that CoinGecko returns records.
+
+```python
+record_count = len(crypto_data)
+
+if record_count == 0:
+    raise ValueError(
+        "Monitoring check failed: CoinGecko returned 0 records."
+    )
+
+print(
+    f"Monitoring check passed: "
+    f"{record_count} records retrieved."
+)
+```
+
+This prevents an empty API response from silently propagating through the pipeline.
+
+## Python Validation
+
+The Python validation layer checks:
+
+* Required columns
+* Required values
+* Numeric ranges
+* Duplicate cryptocurrency IDs
+* Timestamp validity
+* Timestamp freshness
+
+## Kafka Validation
+
+Kafka processing validates events before they enter the downstream data lake.
+
+Invalid events can be routed to:
+
+```text
+crypto-market-data-dlq
+```
+
+## dbt Validation
+
+dbt provides warehouse-level:
+
+* Uniqueness checks
+* Valid-value checks
+* Freshness checks
+* Model tests
+* Deduplication
+
+The project contains:
+
+```text
+9 Python unit tests
+17 dbt tests
+```
+
+Validation results:
+
+```text
+9/9 Python tests passing
+17/17 dbt tests passing
+```
+
+---
+
+# 14. Infrastructure as Code
+
+Terraform is used to manage BigQuery infrastructure.
+
+Terraform version:
 
 ```text
 Terraform v1.16.4
 ```
 
-Terraform manages:
+Google provider:
 
 ```text
-GCP Project
-     │
-     ▼
-BigQuery Dataset
-crypto_market
-     │
-     ▼
-Raw Table
-crypto_prices
+hashicorp/google
 ```
 
-Terraform configuration is stored in:
-
-```text
-terraform/
-```
-
-Main Terraform files:
+Terraform configuration:
 
 ```text
 terraform/
@@ -645,47 +776,46 @@ terraform/
 └── .terraform.lock.hcl
 ```
 
-The Terraform configuration defines:
+Terraform manages:
+
+```text
+Existing GCP Project
+        │
+        ▼
+BigQuery Dataset
+crypto_market
+        │
+        ▼
+Raw Table
+crypto_prices
+```
+
+Terraform configuration defines:
 
 * Google Cloud provider
 * BigQuery dataset
 * BigQuery raw table
-* Dataset expiration settings
-* Table schema
+* Dataset/table expiration configuration
+* Raw table schema
 * Terraform outputs
 
-Terraform validation is also performed automatically by GitHub Actions.
+The infrastructure was imported and reconciled with the existing BigQuery resources.
 
-The Terraform infrastructure was successfully imported and reconciled with the existing BigQuery resources.
-
-Current Terraform state:
+Terraform validation results:
 
 ```text
-Terraform infrastructure       ✅
-Terraform initialization       ✅
-Terraform validation           ✅
-Terraform plan                 ✅
-Terraform apply                ✅
-```
-
-Terraform and dbt have deliberately separated responsibilities:
-
-```text
-Terraform
-    │
-    ├── BigQuery dataset
-    └── Raw table
-            │
-            ▼
-           dbt
-            │
-            ├── staging view
-            └── analytical mart
+Terraform initialization       PASS
+Terraform formatting          PASS
+Terraform validation          PASS
+Terraform plan                NO CHANGES
+Terraform apply               0 added
+                               0 changed
+                               0 destroyed
 ```
 
 ---
 
-# 14. CI/CD
+# 15. CI/CD
 
 GitHub Actions provides automated continuous integration.
 
@@ -695,25 +825,25 @@ Workflow:
 .github/workflows/ci.yml
 ```
 
-The CI pipeline runs three independent jobs:
+The CI pipeline contains three independent jobs:
 
 ```text
-                    Git push / Pull Request
-                              │
-                              ▼
-                     GitHub Actions
-                              │
-             ┌────────────────┼────────────────┐
-             ▼                ▼                ▼
-       Python checks    Terraform checks    dbt checks
-             │                │                │
-             ▼                ▼                ▼
-          Compile          Format          Parse
-          Tests            Validate
-             │                │                │
-             └────────────────┼────────────────┘
-                              ▼
-                         CI SUCCESS
+                 Git Push / Pull Request
+                          │
+                          ▼
+                   GitHub Actions
+                          │
+          ┌───────────────┼────────────────┐
+          ▼               ▼                ▼
+    Python Checks   Terraform Checks    dbt Checks
+          │               │                │
+          ▼               ▼                ▼
+       Compile          Format           Parse
+       Tests            Validate
+          │               │                │
+          └───────────────┼────────────────┘
+                          ▼
+                     CI SUCCESS
 ```
 
 ## Python Checks
@@ -722,105 +852,72 @@ The Python CI job:
 
 * Sets up Python 3.12.
 * Installs development dependencies.
-* Compiles the source code.
-* Runs the Python test suite.
+* Compiles the Python source.
+* Runs the test suite.
 
-The project contains:
-
-```text
-9 Python unit tests
-```
-
-Current result:
+Result:
 
 ```text
-9/9 tests passing
+9/9 Python tests passing
 ```
 
 ## Terraform Checks
 
-The Terraform CI job:
+The Terraform job runs:
 
-```text
+```bash
 terraform fmt -check
 terraform init -backend=false
 terraform validate
 ```
-
-This validates the Terraform configuration without requiring a remote Terraform backend.
 
 ## dbt Checks
 
 The dbt CI job:
 
 * Installs dbt 2.0.6.
-* Creates an isolated CI dbt profile.
+* Creates an isolated CI profile.
 * Runs `dbt parse`.
 
-The CI environment does not contain production GCP credentials, so the CI job validates the dbt project structure without attempting to modify BigQuery.
+The CI environment does not contain production GCP credentials and therefore validates the dbt project structure without modifying BigQuery.
 
 ## Dependency Separation
 
-The project separates dependencies by responsibility.
-
-### Runtime Dependencies
+Runtime dependencies:
 
 ```text
 requirements.txt
 ```
 
-Contains application dependencies such as:
-
-```text
-requests
-pydantic-settings
-pandas
-pyarrow
-kafka-python
-google-cloud-bigquery
-```
-
-### Development Dependencies
+Development dependencies:
 
 ```text
 requirements-dev.txt
 ```
 
-Includes runtime dependencies plus:
-
-```text
-pytest
-```
-
-### dbt Dependencies
+dbt dependencies:
 
 ```text
 requirements-dbt.txt
 ```
 
-Contains:
-
-```text
-dbt==2.0.6
-```
-
-### Airflow Dependencies
+Airflow dependencies:
 
 ```text
 requirements-airflow.txt
 ```
 
-Contains:
+Dashboard dependencies:
 
 ```text
-apache-airflow==3.3.2
+requirements-dashboard.txt
 ```
 
-The Google Cloud CLI is installed as a system/tool dependency and is not listed as a Python package because `google-cloud-cli` is not a pip package.
+The project separates dependencies by responsibility rather than placing every tool into one environment.
 
 ## CI Result
 
-The latest CI implementation successfully passed all three jobs:
+The latest CI pipeline passed:
 
 ```text
 Python checks       ✅
@@ -832,7 +929,53 @@ CI pipeline         ✅ SUCCESS
 
 ---
 
-# 15. Project Structure
+# 16. Streamlit Dashboard
+
+The project includes a Streamlit analytical dashboard.
+
+Application:
+
+```text
+dashboard/app.py
+```
+
+Dashboard dependencies:
+
+```text
+streamlit==1.64.0
+plotly==7.1.0
+```
+
+The dashboard provides:
+
+* Refresh Data
+* Data freshness monitoring
+* Market overview KPIs
+* 24-hour price performance
+* Market capitalization
+* 24-hour trading volume
+* Historical price selection
+* Latest cryptocurrency data
+* Missing-data handling
+* BigQuery error handling
+* Partial-data handling
+* Responsive wide-layout presentation
+
+## Data Freshness Categories
+
+The dashboard categorizes data as:
+
+```text
+Fresh       ≤ 10 minutes
+Aging       10–30 minutes
+Stale       > 30 minutes
+```
+
+The dashboard consumes analytical data from BigQuery rather than directly querying the external CoinGecko API for every visualization.
+
+---
+
+# 17. Project Structure
 
 ```text
 CryptoData/
@@ -841,18 +984,18 @@ CryptoData/
 ├── .env.example
 ├── .gitignore
 ├── README.md
+│
 ├── requirements.txt
 ├── requirements-dev.txt
 ├── requirements-dbt.txt
 ├── requirements-airflow.txt
+├── requirements-dashboard.txt
+│
 ├── docker-compose.yml
 │
 ├── .github/
 │   └── workflows/
 │       └── ci.yml
-│
-├── .vscode/
-│   └── settings.json
 │
 ├── src/
 │   ├── __init__.py
@@ -894,10 +1037,13 @@ CryptoData/
 │   ├── __init__.py
 │   └── test_validate.py
 │
+├── dashboard/
+│   └── app.py
+│
 ├── data/
-│   ├── raw/
-│   ├── processed/
 │   └── lake/
+│       ├── raw/
+│       └── processed/
 │
 ├── logs/
 │
@@ -925,34 +1071,42 @@ CryptoData/
     └── .terraform.lock.hcl
 ```
 
-### Generated and local-only files
+## Generated and Local-Only Files
 
-The following are generated during development and are not tracked as source code:
+The following files/directories are generated locally and are not tracked as project source:
 
 ```text
 .env
+
 airflow/airflow.db
 airflow/airflow.db-shm
 airflow/airflow.db-wal
 airflow/logs/
+
 data/lake/raw/
 data/lake/processed/
+
 Python cache files
 dbt target artifacts
 Terraform state
 .terraform/
 ```
 
-The repository tracks reproducible source and configuration files rather than runtime artifacts.
+The repository tracks reproducible source code and configuration rather than runtime artifacts or secrets.
 
 ---
 
-# 16. Environment Setup
+# 18. Environment Setup
 
-Create and activate the Conda environment:
+Create the Conda environment:
 
 ```bash
 conda create -n crypto_market python=3.12
+```
+
+Activate it:
+
+```bash
 conda activate crypto_market
 ```
 
@@ -962,31 +1116,37 @@ Install runtime dependencies:
 pip install -r requirements.txt
 ```
 
-For development and testing:
+Install development dependencies:
 
 ```bash
 pip install -r requirements-dev.txt
 ```
 
-Install dbt separately:
+Install dbt:
 
 ```bash
 pip install -r requirements-dbt.txt
 ```
 
-Install Airflow separately:
+Install Airflow:
 
 ```bash
 pip install -r requirements-airflow.txt
 ```
 
-The project uses Conda where practical to reduce binary compatibility issues between:
+Install dashboard dependencies:
+
+```bash
+pip install -r requirements-dashboard.txt
+```
+
+The project uses Conda where practical to reduce binary compatibility issues between packages such as:
 
 * NumPy
 * Pandas
 * PyArrow
 
-Verify the Python environment:
+Verify Python:
 
 ```bash
 python --version
@@ -1000,7 +1160,34 @@ Python 3.12.x
 
 ---
 
-# 17. Start Kafka
+# 19. Environment Configuration
+
+Create the local environment file:
+
+```text
+.env
+```
+
+Example:
+
+```text
+COINGECKO_BASE_URL=https://api.coingecko.com/api/v3
+COINGECKO_API_KEY=your_api_key_here
+```
+
+Do **not** commit `.env` to Git.
+
+The project includes:
+
+```text
+.env.example
+```
+
+for documenting required environment variables without exposing secrets.
+
+---
+
+# 20. Start Kafka
 
 Kafka runs locally using Docker.
 
@@ -1010,7 +1197,7 @@ Check Docker:
 sudo systemctl status docker
 ```
 
-Start the existing Kafka container:
+Start the Kafka container:
 
 ```bash
 docker start crypto-kafka
@@ -1030,7 +1217,7 @@ crypto-kafka
 
 ---
 
-# 18. Test CoinGecko Extraction
+# 21. Test CoinGecko Extraction
 
 Run:
 
@@ -1038,16 +1225,17 @@ Run:
 python -c "from src.ingestion.coingecko_client import CoinGeckoClient; data=CoinGeckoClient().get_market_data(coin_ids=['bitcoin','ethereum','solana']); print(f'Retrieved {len(data)} coins'); print([coin['id'] for coin in data])"
 ```
 
-Expected result:
+Expected:
 
 ```text
 Retrieved 3 coins
+
 ['bitcoin', 'ethereum', 'solana']
 ```
 
 ---
 
-# 19. Start Airflow
+# 22. Start Airflow
 
 Set the project-specific Airflow home:
 
@@ -1061,26 +1249,26 @@ Start Airflow:
 airflow standalone
 ```
 
-Verify the scheduler:
+Airflow standalone starts the components required for the local development environment.
 
-```bash
-airflow jobs check --job-type SchedulerJob
-```
-
-Expected:
-
-```text
-Found one alive job.
-```
+The project uses this dedicated Airflow environment so it does not interfere with other Airflow projects on the machine.
 
 ---
 
-# 20. Trigger the Pipeline
+# 23. Trigger the Pipeline Manually
 
-Trigger the DAG:
+Although the pipeline is configured for hourly scheduling, it can also be triggered manually.
+
+Run:
 
 ```bash
 airflow dags trigger crypto_market_pipeline
+```
+
+Check DAG runs:
+
+```bash
+airflow dags list-runs -d crypto_market_pipeline
 ```
 
 Check task states:
@@ -1091,7 +1279,7 @@ crypto_market_pipeline \
 <RUN_ID>
 ```
 
-A successful run should show:
+A successful run should contain:
 
 ```text
 extract_from_coingecko    success
@@ -1104,7 +1292,7 @@ run_dbt                   success
 
 ---
 
-# 21. Run Tests
+# 24. Run Tests
 
 Run the Python test suite:
 
@@ -1112,7 +1300,7 @@ Run the Python test suite:
 pytest -v
 ```
 
-Expected result:
+Expected:
 
 ```text
 9 passed
@@ -1126,7 +1314,7 @@ python -m compileall src
 
 ---
 
-# 22. Useful Validation Commands
+# 25. Useful Validation Commands
 
 ## Check Kafka
 
@@ -1134,7 +1322,7 @@ python -m compileall src
 docker ps --filter "name=crypto-kafka"
 ```
 
-## Check Parquet Files
+## Check Processed Parquet Files
 
 ```bash
 find data/lake/processed/crypto_market -name "*.parquet"
@@ -1169,60 +1357,66 @@ terraform plan
 
 ---
 
-# 23. Data Quality
+# 26. Data Quality Architecture
 
-The pipeline implements multiple layers of data-quality control.
+The platform implements data quality at multiple stages.
 
 ```text
 CoinGecko API
-     │
-     ▼
-Extraction
-validation
-     │
-     ▼
-Kafka event
-validation
-     │
-     ├── Valid ─────────────► Data Lake
-     │
-     └── Invalid ───────────► DLQ
-                              │
-                              ▼
-                    crypto-market-data-dlq
-     │
-     ▼
-dbt validation
-     │
-     ├── uniqueness
-     ├── valid values
-     ├── freshness
-     └── deduplication
+      │
+      ▼
+Python Extraction
+      │
+      ├── required values
+      ├── numeric validation
+      └── timestamp validation
+      │
+      ▼
+Kafka Event
+      │
+      ├── Valid
+      │     │
+      │     ▼
+      │   Data Lake
+      │
+      └── Invalid
+            │
+            ▼
+      Dead Letter Queue
+      crypto-market-data-dlq
+           
+
+Data Lake
+    │
+    ▼
+Parquet
+    │
+    ▼
+BigQuery
+    │
+    ▼
+dbt
+    │
+    ├── uniqueness
+    ├── valid values
+    ├── freshness
+    ├── deduplication
+    └── analytical model tests
 ```
 
-The Python validation layer checks conditions such as:
-
-* Required columns
-* Required values
-* Numeric ranges
-* Duplicate cryptocurrency IDs
-* Timestamp validity
-* Timestamp freshness
-
-The project contains:
+Validation results:
 
 ```text
-9 Python unit tests
-17 dbt tests
+Python unit tests       9/9   PASS
+dbt tests              17/17  PASS
+Terraform validation           PASS
+GitHub Actions CI              PASS
+Airflow tasks             6/6  PASS
 ```
-
-This creates multiple quality gates before data reaches analytical models.
 
 ---
 
-# 24. Engineering Concepts Demonstrated
-
-This project demonstrates practical knowledge of modern data engineering.
+# 27. Engineering Concepts Demonstrated
 
 ## Data Ingestion
 
@@ -1230,9 +1424,10 @@ This project demonstrates practical knowledge of modern data engineering.
 * HTTP requests
 * API parameters
 * JSON
-* Optional API authentication
+* API authentication
 * Error handling
 * Configuration management
+* Environment variables
 
 ## Streaming
 
@@ -1251,16 +1446,17 @@ This project demonstrates practical knowledge of modern data engineering.
 * Processed data
 * JSON
 * Parquet
-* Partitioned storage
-* Layered data storage
+* Date partitioning
+* Layered storage
 
 ## Data Transformation
 
 * Pandas
 * PyArrow
-* Timestamp handling
 * Schema normalization
+* Timestamp conversion
 * Data validation
+* Parquet generation
 
 ## Data Warehousing
 
@@ -1269,17 +1465,17 @@ This project demonstrates practical knowledge of modern data engineering.
 * Tables
 * Schema management
 * Parquet ingestion
-* Warehouse data modeling
+* Analytical data modeling
 
 ## Analytics Engineering
 
-* dbt models
+* dbt
+* SQL models
 * Staging models
-* Mart models
-* SQL transformations
+* Analytical marts
 * Deduplication
-* Data-quality tests
 * Freshness checks
+* Data-quality tests
 
 ## Orchestration
 
@@ -1288,34 +1484,53 @@ This project demonstrates practical knowledge of modern data engineering.
 * PythonOperator
 * Task dependencies
 * XCom
+* Scheduling
 * End-to-end workflow execution
 
 ## Infrastructure
 
 * Docker
 * Kafka containers
-* Conda environments
+* Conda
 * Google Cloud SDK
 * Terraform
 * Infrastructure as Code
 
-## DevOps / CI
+## DevOps / CI/CD
 
 * Git
 * GitHub
 * GitHub Actions
 * Automated Python testing
 * Terraform validation
-* dbt project validation
+* dbt validation
 * Dependency separation
+* Secret protection
+
+## Analytics
+
+* Streamlit
+* Plotly
+* KPI dashboards
+* Historical trends
+* Data freshness visualization
+* BigQuery-backed analytics
 
 ---
 
-# 25. Key Design Decisions
+# 28. Key Design Decisions
+
+## Why CoinGecko?
+
+CoinGecko provides an external, realistic cryptocurrency market-data source.
+
+Using a real API makes the project closer to a real-world ingestion workload than using manually generated sample data.
+
+---
 
 ## Why Kafka?
 
-Kafka provides a streaming layer between ingestion and downstream processing.
+Kafka introduces an event-streaming layer between ingestion and downstream processing.
 
 Instead of:
 
@@ -1326,65 +1541,96 @@ API → Database
 the architecture becomes:
 
 ```text
-API → Kafka → Consumers → Data Lake/Warehouse
+API
+ ↓
+Kafka
+ ↓
+Consumer
+ ↓
+Data Lake
+ ↓
+Warehouse
 ```
 
-This creates a foundation for future continuous and real-time workloads.
+This demonstrates concepts required for streaming-oriented data engineering systems.
 
-The current project manually triggers the overall Airflow workflow, so Kafka provides the streaming architecture without claiming that the entire platform currently runs continuously.
+The current implementation uses Kafka locally and orchestrates the complete workflow hourly through Airflow.
+
+---
 
 ## Why a Local Data Lake?
 
-A local data lake keeps the project zero-cost while demonstrating important data-lake concepts.
+A local data lake keeps the project zero-cost while demonstrating:
 
-The local implementation can later be migrated to cloud object storage such as Google Cloud Storage.
+* Raw storage
+* Processed storage
+* Data layers
+* Partitioning
+* Parquet
+* Data-lake organization
+
+The architecture can later be migrated to cloud object storage.
+
+---
 
 ## Why Parquet?
 
-Parquet is a columnar storage format that is efficient for analytical workloads and generally more compact and query-friendly than raw JSON.
+Parquet is a columnar storage format suited to analytical workloads.
+
+Compared with raw JSON, Parquet provides a more structured and analytics-friendly representation of processed data.
+
+---
 
 ## Why BigQuery?
 
-BigQuery provides a cloud-native analytical warehouse without requiring a locally managed database server.
+BigQuery provides a cloud analytical warehouse without requiring the project to maintain a database server.
 
-The project uses the BigQuery Sandbox/zero-cost development approach rather than depending on paid infrastructure.
+The project uses the BigQuery Sandbox/zero-cost development approach.
+
+---
 
 ## Why dbt?
 
-dbt separates warehouse transformation logic from ingestion code.
+dbt separates warehouse transformation logic from Python ingestion code.
 
 It provides:
 
 * SQL models
-* Testing
+* Data-quality tests
 * Freshness checks
 * Deduplication
 * Reusable transformations
 * Analytical marts
 
+---
+
 ## Why Airflow?
 
-Airflow coordinates the complete workflow and makes task dependencies explicit:
+Airflow coordinates the complete workflow and makes dependencies explicit:
 
 ```text
 Extract
-  ↓
+   ↓
 Stream
-  ↓
+   ↓
 Consume
-  ↓
+   ↓
 Transform
-  ↓
+   ↓
 Load
-  ↓
-Transform/Test
+   ↓
+dbt
 ```
+
+Airflow also provides scheduling and task-level execution visibility.
+
+---
 
 ## Why Terraform?
 
-Terraform makes the cloud infrastructure reproducible and version-controlled.
+Terraform makes cloud infrastructure reproducible and version-controlled.
 
-Instead of manually creating BigQuery resources, infrastructure is represented as code:
+Instead of manually creating BigQuery infrastructure:
 
 ```text
 Terraform configuration
@@ -1393,34 +1639,160 @@ Terraform plan
         ↓
 Terraform apply
         ↓
-GCP resources
+BigQuery resources
 ```
 
-## Why GitHub Actions?
-
-GitHub Actions automatically checks changes before they are accepted as healthy project changes.
-
-The current CI pipeline validates:
-
-```text
-Python
-  ↓
-Tests
-
-Terraform
-  ↓
-Format + Validate
-
-dbt
-  ↓
-Parse
-```
-
-This reduces the risk of introducing broken code or invalid infrastructure configuration.
+Terraform and dbt are intentionally separated so infrastructure and analytical transformations do not compete for ownership of the same resources.
 
 ---
 
-# 26. Current Project Status
+## Why GitHub Actions?
+
+GitHub Actions automatically validates changes to the repository.
+
+The CI pipeline checks:
+
+```text
+Python
+   ↓
+Compile + Tests
+
+Terraform
+   ↓
+Format + Validate
+
+dbt
+   ↓
+Parse
+```
+
+This reduces the risk of introducing broken application code, invalid infrastructure configuration, or malformed dbt projects.
+
+---
+
+## Why Streamlit?
+
+Streamlit provides a lightweight analytical interface for exposing the processed warehouse data.
+
+It allows the project to demonstrate the complete path from:
+
+```text
+Data ingestion
+      ↓
+Data engineering
+      ↓
+Data warehouse
+      ↓
+Analytics
+      ↓
+User-facing dashboard
+```
+
+---
+
+# 29. Project Challenges and Solutions
+
+## Challenge 1 — BigQuery Timestamp Compatibility
+
+### Problem
+
+Parquet timestamps generated with nanosecond precision were incompatible with BigQuery.
+
+### Solution
+
+The pipeline converted timestamps to UTC and stored them using microsecond precision.
+
+```text
+Pandas
+   ↓
+UTC timestamp
+   ↓
+Microsecond precision
+   ↓
+Parquet
+   ↓
+BigQuery
+```
+
+---
+
+## Challenge 2 — Kafka Invalid Events
+
+### Problem
+
+Invalid events should not stop the entire processing pipeline.
+
+### Solution
+
+A Dead Letter Queue was implemented:
+
+```text
+Valid Event
+    ↓
+Normal Processing
+
+Invalid Event
+    ↓
+DLQ
+```
+
+---
+
+## Challenge 3 — Infrastructure Ownership
+
+### Problem
+
+Terraform and dbt should not attempt to manage the same BigQuery resources.
+
+### Solution
+
+Responsibilities were separated:
+
+```text
+Terraform
+    ↓
+Infrastructure
+
+dbt
+    ↓
+Transformation + Analytics
+```
+
+---
+
+## Challenge 4 — API Authentication
+
+### Problem
+
+CoinGecko API requests require the appropriate authentication configuration for the project's usage.
+
+### Solution
+
+The project loads the API key from a local `.env` file through the application configuration layer.
+
+The secret is excluded from Git version control.
+
+---
+
+## Challenge 5 — Multiple Airflow Projects
+
+### Problem
+
+The machine contains more than one Airflow project.
+
+### Solution
+
+CryptoData uses its own Airflow home:
+
+```text
+~/Desktop/CryptoData/airflow
+```
+
+This prevents its metadata database and logs from interfering with other Airflow projects.
+
+---
+
+# 30. Current Project Status
 
 ```text
 CoinGecko API              ✅
@@ -1441,70 +1813,37 @@ dbt tests                  ✅
 dbt marts                  ✅
 Airflow DAG                ✅
 Airflow orchestration      ✅
+Hourly scheduling          ✅
 Docker                     ✅
-End-to-end execution       ✅
 Terraform                  ✅
 CI/CD                      ✅
 Python unit tests          ✅
-Dashboard                  ⬜
-Additional monitoring      ⬜
+Dashboard                  ✅
+Pipeline monitoring        ✅
+End-to-end execution      ✅
+Git repository cleanup     ✅
 ```
 
-Current validation results:
+Current validation:
 
 ```text
-Airflow tasks:       6/6 successful
-Python tests:        9/9 successful
-dbt tests:          17/17 successful
-Terraform checks:    PASS
-GitHub Actions CI:   SUCCESS
+Airflow tasks:        6/6 successful
+Python tests:         9/9 successful
+dbt tests:           17/17 successful
+Terraform checks:     PASS
+GitHub Actions CI:    SUCCESS
+Dashboard:            COMPLETE
+Hourly schedule:      VERIFIED
+Git repository:       CLEAN
 ```
 
 ---
 
-# 27. Future Improvements
+# 31. Future Improvements
 
-The core end-to-end platform is now implemented. Future work will focus on turning the engineering pipeline into a more complete production-style analytics platform.
+The core portfolio platform is complete.
 
-## Dashboard
-
-Build an analytical dashboard displaying:
-
-* Cryptocurrency prices
-* Market capitalization
-* Trading volume
-* 24-hour price changes
-* Market rankings
-* Historical trends
-
-The dashboard is the next major project component.
-
-## Scheduling
-
-Change the Airflow DAG from:
-
-```python
-schedule=None
-```
-
-to a periodic schedule such as:
-
-```text
-Every 15 minutes
-```
-
-This would move the project closer to continuous market-data ingestion.
-
-## Monitoring
-
-Add:
-
-* Airflow alerts
-* Pipeline metrics
-* Kafka monitoring
-* Data-quality alerts
-* Failure notifications
-* Logging dashboards
+Future improvements could include:
 
 ## Cloud Data Lake
 
@@ -1514,21 +1853,21 @@ Replace or complement the local data lake with:
 Google Cloud Storage
 ```
 
-while retaining the same raw/processed data-layer concepts.
+while preserving the existing raw/processed architecture.
 
 ## Security
 
 Add:
 
 * Dedicated service accounts
-* IAM roles
-* Secret Manager
-* More restrictive permissions
-* Secure API-key management
+* More granular IAM roles
+* Google Secret Manager
+* Least-privilege access
+* Additional credential isolation
 
 ## Advanced Streaming
 
-Extend the Kafka implementation with:
+Extend Kafka with:
 
 * More cryptocurrency assets
 * Continuous producers
@@ -1537,73 +1876,125 @@ Extend the Kafka implementation with:
 * Event-time processing
 * Higher-volume workloads
 
-## Deployment
+## Advanced Monitoring
 
-Extend CI/CD beyond validation toward deployment of:
+Add:
 
+* Airflow alerting
+* Kafka metrics
+* Pipeline metrics
+* Centralized logging
+* Failure notifications
+* Data-quality alerting
+
+## Production Deployment
+
+Extend CI/CD toward automated deployment of:
+
+* Cloud infrastructure
 * Airflow components
-* Data infrastructure
 * dbt models
-* Cloud resources
+* Dashboard
+* Supporting services
+
+These are future production-oriented extensions rather than missing components of the current portfolio implementation.
 
 ---
 
-# 28. Project Outcome
+# 32. Project Outcome
 
 The Cryptocurrency Market Data Platform demonstrates a complete modern data engineering workflow:
 
 ```text
-External API
-     ↓
-Python
-     ↓
-Kafka
-     ↓
-Data Lake
-     ↓
-Parquet
-     ↓
-BigQuery
-     ↓
-dbt
-     ↓
-Airflow
-     ↓
-CI/CD
+                    CoinGecko API
+                          │
+                          ▼
+                    Python Ingestion
+                          │
+                          ▼
+                       Kafka
+                          │
+                          ▼
+                  Kafka Consumer
+                          │
+                 ┌────────┴────────┐
+                 ▼                 ▼
+             Data Lake             DLQ
+                 │
+                 ▼
+              Parquet
+                 │
+                 ▼
+             BigQuery
+                 │
+                 ▼
+                dbt
+                 │
+                 ▼
+          Analytical Marts
+                 │
+                 ▼
+          Streamlit Dashboard
 ```
 
-The complete Airflow pipeline has been successfully executed with all six tasks passing:
+The complete workflow is orchestrated by:
 
 ```text
-6/6 tasks successful
+Apache Airflow
 ```
 
-The project also has automated validation:
+and infrastructure is managed through:
 
 ```text
+Terraform
+```
+
+while repository changes are validated through:
+
+```text
+GitHub Actions
+```
+
+The platform has been successfully validated with:
+
+```text
+6/6 Airflow tasks successful
 9/9 Python tests passing
 17/17 dbt tests passing
 Terraform validation passing
 GitHub Actions CI passing
+Hourly Airflow scheduling verified
+Dashboard completed
+Git repository clean
 ```
 
-The completed platform demonstrates practical experience with:
+The project demonstrates practical experience with:
 
 * API ingestion
+* REST APIs
 * Event streaming
-* Kafka
+* Apache Kafka
+* Kafka producers and consumers
 * Dead Letter Queues
 * Data lakes
+* JSON
 * Parquet
 * Pandas
-* BigQuery
+* PyArrow
+* Google BigQuery
 * SQL transformation
 * dbt
 * Data quality
-* Airflow orchestration
+* Apache Airflow
+* Workflow scheduling
 * Docker
 * Terraform
+* Infrastructure as Code
 * Git/GitHub
-* GitHub Actions CI/CD
+* GitHub Actions
+* CI/CD
+* Streamlit
+* Plotly
+* Analytical dashboards
 
-The next major component is the **analytics dashboard**, which will expose the processed cryptocurrency data through a user-facing analytical interface.
+The result is a complete portfolio-oriented data engineering platform covering the path from **external data source → ingestion → streaming → storage → transformation → warehouse → orchestration → infrastructure → CI/CD → analytics**.
