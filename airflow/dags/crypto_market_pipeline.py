@@ -26,10 +26,14 @@ def extract_from_coingecko():
         ]
     )
 
-    print(
-        f"Retrieved {len(crypto_data)} "
-        "cryptocurrencies from CoinGecko."
-    )
+    record_count = len(crypto_data)
+
+    print(f"Retrieved {record_count} cryptocurrencies from CoinGecko.")
+
+    if record_count == 0:
+        raise ValueError("Monitoring check failed: CoinGecko returned 0 records.")
+
+    print(f"Monitoring check passed: {record_count} records retrieved.")
 
     return crypto_data
 
@@ -204,7 +208,7 @@ with DAG(
     dag_id="crypto_market_pipeline",
     description="Cryptocurrency market data pipeline",
     start_date=datetime(2026, 1, 1),
-    schedule=None,
+    schedule="0 * * * *",
     catchup=False,
     tags=["crypto", "kafka", "bigquery", "dbt"],
 ) as dag:
