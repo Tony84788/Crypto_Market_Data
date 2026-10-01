@@ -4,3 +4,4 @@ pandas
 pyarrow
 kafka-python
 google-cloud-bigquery
+plotly==7.1.0
